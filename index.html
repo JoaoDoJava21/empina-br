@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0e14" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon-512.png" />
+    <title>Empina BR</title>
+    <script type="module" crossorigin src="./assets/index-748Tvj8c.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BkrFowz4.css">
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+
+    <div id="loading">
+      <div class="logo big">EMPINA<span>BR</span></div>
+      <div class="lbar"><i></i></div>
+      <p>Montando a quebrada...</p>
+    </div>
+
+    <!-- ============ HUD ============ -->
+    <div id="hud" class="hidden">
+      <div class="tl">
+        <div class="pill money">R$ <b id="hMoney">0</b></div>
+        <div class="pill">PTS <b id="hScore">0</b></div>
+        <canvas id="minimap" width="150" height="150"></canvas>
+      </div>
+      <div id="combo"><div class="ctype"></div><div class="cdist"></div><div class="cpts"></div><div class="cponto">NO PONTO!</div></div>
+      <div id="popup"></div>
+      <div id="bigmsg"></div>
+      <div class="tr">
+        <button id="bChat" class="ib onl" aria-label="chat">💬</button>
+        <button id="bRadio" class="ib" aria-label="rádio">📻</button>
+        <button id="bReset" class="ib" aria-label="voltar">↺</button>
+        <button id="bCam" class="ib" aria-label="câmera">🎥</button>
+        <button id="bPause" class="ib" aria-label="pausar">❚❚</button>
+      </div>
+      <div id="players" class="onl"></div>
+      <div id="feed"></div>
+
+      <div id="dash">
+        <svg id="gauge" viewBox="0 0 70 62">
+          <path d="M55 55 A45 45 0 0 0 10 10" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="7" transform="translate(0 0)"/>
+          <path id="zone" d="M35.4 18.0 A45 45 0 0 0 26.1 13.5" fill="none" stroke="#22c55e" stroke-width="7" />
+          <line id="needle" x1="10" y1="55" x2="56" y2="55" stroke="#ffd400" stroke-width="3" stroke-linecap="round" />
+          <circle cx="10" cy="55" r="4" fill="#ffd400" />
+        </svg>
+        <div class="spd"><b id="hSpeed">0</b><small>km/h</small></div>
+        <div class="gr"><small>MARCHA</small><b id="hGear">1</b></div>
+        <div class="rpm"><i id="hRpm"></i></div>
+      </div>
+
+      <div id="ctl">
+        <div id="steer" class="pad"><div class="knob"></div><span>◀&nbsp;&nbsp;DIREÇÃO&nbsp;&nbsp;▶</span></div>
+        <button id="fbrake" class="btn sm">FREIO<br />DIANT.</button>
+        <button id="clutch" class="btn">EMBR.</button>
+        <button id="brake" class="btn">FREIO</button>
+        <div id="throttle" class="slider"><div class="fill"></div><span>ACEL.</span></div>
+        <div id="gears"><button id="gUp" class="gbtn">▲</button><button id="gDown" class="gbtn">▼</button></div>
+        <div id="tricks"><button id="t1" class="tbtn">🙌<br/>SEM MÃO</button><button id="t2" class="tbtn">🦸<br/>SUPERMAN</button><button id="t3" class="tbtn">🏄<br/>SURF</button></div>
+      </div>
+
+      <div id="chatbox" class="hidden">
+        <div class="quick">
+          <button data-chat="Que grau! 🔥">Que grau! 🔥</button>
+          <button data-chat="Segura o ponto!">Segura o ponto!</button>
+          <button data-chat="Bora pra praia 🏖">Bora pra praia 🏖</button>
+          <button data-chat="Partiu pista de skate">Partiu pista</button>
+          <button data-chat="Kkkkk caiu">Kkkkk caiu</button>
+          <button data-chat="Valeu! 🤙">Valeu! 🤙</button>
+        </div>
+        <div class="row"><input id="chatIn" maxlength="80" placeholder="Mensagem..." /><button id="chatSend">Enviar</button></div>
+      </div>
+    </div>
+
+    <!-- ============ MENU ============ -->
+    <div id="menu" class="screen">
+      <div class="mLeft">
+        <div class="logo big">EMPINA<span>BR</span></div>
+        <div class="sub">Grau, corte e mortal na quebrada · online</div>
+        <div class="profile"><label>Piloto</label><input id="pname" maxlength="16" /></div>
+        <div class="cur">Moto: <b id="mBike"></b></div>
+        <div class="wallet">R$ <b class="mMoney"></b></div>
+      </div>
+      <div class="menuBtns">
+        <button data-go="play" class="primary">▶ JOGAR</button>
+        <button data-go="online" class="blue">🌐 ONLINE</button>
+        <button data-go="garage">🏍 GARAGEM</button>
+        <button data-go="missions">🏆 DESAFIOS</button>
+        <button data-go="settings">⚙ CONFIG</button>
+      </div>
+      <div class="help">Grau real: em 1ª, segura EMBR., acelera e solta. Depois dose o acelerador no ponto · FREIO baixa a frente · FREIO DIANT. faz o corte · ▲▼ marchas · manobras aparecem empinando<br/>PC: W/S acelera/freia, A/D direção, Espaço embreagem, F freio diant., E/Q marchas, 1/2/3 manobras, C câmera, R volta</div>
+    </div>
+
+    <!-- ============ GARAGE ============ -->
+    <div id="garage" class="screen">
+      <div class="gTop"><button data-go="menu" class="back">← VOLTAR</button><div class="wallet">R$ <b class="mMoney"></b></div></div>
+      <div class="gLeft panel">
+        <div id="gName" class="gName"></div>
+        <div id="gCc" class="gCc"></div>
+        <div id="gDesc" class="gDesc"></div>
+        <div id="gStats" class="stats"></div>
+        <div class="gNav"><button id="gPrev">◀</button><span id="gIdx"></span><button id="gNext">▶</button></div>
+        <button id="gAction" class="primary"></button>
+      </div>
+      <div class="gRight panel">
+        <div class="tabs"><button data-tab="cor">CORES</button><button data-tab="up">UPGRADES</button></div>
+        <div id="tabCor"></div>
+        <div id="tabUp"></div>
+        <button id="gPlay" class="primary">▶ ANDAR</button>
+      </div>
+    </div>
+
+    <!-- ============ ONLINE ============ -->
+    <div id="online" class="screen">
+      <div class="panel center">
+        <button data-go="menu" class="back">← VOLTAR</button>
+        <h2>🌐 Online</h2>
+        <p class="muted">Jogue com a galera em tempo real. Grátis, sem cadastro.</p>
+        <button id="onPublic" class="primary">ENTRAR NA SALA PÚBLICA</button>
+        <div class="or">ou com os amigos</div>
+        <button id="onCreate" class="blue">CRIAR SALA PRIVADA</button>
+        <div class="row"><input id="onCode" maxlength="8" placeholder="CÓDIGO" /><button id="onJoin">ENTRAR</button></div>
+        <div id="onStatus" class="status"></div>
+      </div>
+    </div>
+
+    <!-- ============ MISSIONS ============ -->
+    <div id="missions" class="screen">
+      <div class="panel center wide">
+        <button data-go="menu" class="back">← VOLTAR</button>
+        <h2>🏆 Desafios</h2>
+        <div id="mList"></div>
+      </div>
+    </div>
+
+    <!-- ============ SETTINGS ============ -->
+    <div id="settings" class="screen">
+      <div class="panel center wide">
+        <button data-go="menu" class="back">← VOLTAR</button>
+        <h2>⚙ Configurações</h2>
+        <div id="sList"></div>
+      </div>
+    </div>
+
+    <!-- ============ PAUSE ============ -->
+    <div id="pause" class="screen">
+      <div class="panel center">
+        <h2>Pausado</h2>
+        <button id="pResume" class="primary">CONTINUAR</button>
+        <button id="pRespawn">VOLTAR PRA PISTA</button>
+        <button data-go="garage">GARAGEM</button>
+        <button data-go="settings">CONFIG</button>
+        <button id="pauseOnline" class="danger">SAIR DA SALA</button>
+        <button data-go="menu">MENU</button>
+      </div>
+    </div>
+
+    <div id="radioBox"><button id="rCycle">📻</button><div><small id="rStation">Rádio desligada</small><b id="rTrack">Toque para ligar</b></div></div>
+    <div id="toast"></div>
+    <div id="fps"></div>
+    <div id="rotate"><div>📱↻</div>Gire o celular para jogar deitado</div>
+  </body>
+</html>
