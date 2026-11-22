@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Empina BR</string>
+    <string name="title_activity_main">Empina BR</string>
+    <string name="package_name">br.empina.grau</string>
+    <string name="custom_url_scheme">br.empina.grau</string>
+</resources>

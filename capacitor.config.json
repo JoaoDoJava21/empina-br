@@ -1,0 +1,6 @@
+{
+  "appId": "br.empina.grau",
+  "appName": "Empina BR",
+  "webDir": "dist",
+  "android": { "allowMixedContent": false, "backgroundColor": "#0b0e14" }
+}
