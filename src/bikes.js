@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Parts, V3, tube, box, sphere, discX, discZ, slab, arcPts } from './util.js';
+import { RiderRig } from './rider.js';
 
 // ---------------------------------------------------------------------------
 // Catalogue. top = km/h, accel = m/s² at low speed, lift = wheelie ease,
@@ -439,62 +440,6 @@ function capsule(a, b, r, sx = 1, sz = 1, seg = 8) {
   return g;
 }
 
-function knee2(hip, foot, len = 0.46) {
-  const dz = foot.z - hip.z, dy = foot.y - hip.y;
-  let d = Math.hypot(dz, dy);
-  d = Math.min(d, len * 2 - 0.01);
-  const a = d / 2, h = Math.sqrt(Math.max(0, len * len - a * a));
-  const mz = hip.z + dz / 2, my = hip.y + dy / 2;
-  const nz = -dy / d, ny = dz / d;
-  const s = nz > 0 || (nz === 0 && ny > 0) ? 1 : -1;
-  return { z: mz + nz * h * s, y: my + ny * h * s };
-}
-
-function buildRider(o) {
-  const lower = new Parts(), upper = new Parts(), upFix = new Parts(), helmet = new Parts();
-  const hip = o.seat.clone();
-  const peg = o.peg, grip = o.grip;
-  const pants = '#22314f', shoe = '#121212', skin = '#c58c63', jacketMark = '#ffffff';
-  for (const s of [-1, 1]) {
-    const foot = V3(s * 0.2, peg.y + 0.03, peg.z);
-    const k = knee2({ z: hip.z, y: hip.y - 0.05 }, { z: foot.z, y: foot.y });
-    const hp = V3(s * 0.11, hip.y - 0.05, hip.z);
-    const kn = V3(s * 0.19, k.y, k.z);
-    lower.add(capsule(hp, kn, 0.085), pants);
-    lower.add(capsule(kn, foot.clone().add(V3(0, 0.05, 0)), 0.064), pants);
-    lower.add(sphere(0.075, s * 0.2, foot.y + 0.02, foot.z + 0.06, 0.75, 0.6, 1.7, 8), shoe);
-  }
-  lower.add(sphere(0.17, 0, hip.y + 0.0, hip.z - 0.02, 1.0, 0.7, 0.95, 10), pants);
-  // torso aims at a point above the grips
-  const tgt = V3(0, grip.y + 0.32, grip.z - 0.12);
-  const dir = tgt.clone().sub(hip).normalize();
-  const sh = hip.clone().addScaledVector(dir, 0.56);
-  upper.add(capsule(hip.clone().addScaledVector(dir, 0.02), sh, 0.15, 1.35, 0.85, 10), jacketMark);
-  upper.add(capsule(V3(-0.17, sh.y - 0.03, sh.z), V3(0.17, sh.y - 0.03, sh.z), 0.085, 1, 1, 8), jacketMark);
-  const neck = sh.clone().addScaledVector(dir, 0.1);
-  upFix.add(tube(sh, neck, 0.05, 0.05, 6), skin);
-  const arms = [];
-  for (const s of [-1, 1]) {
-    const S = V3(s * 0.2, sh.y - 0.03, sh.z);
-    const G = V3(s * (grip.w - 0.05), grip.y + 0.02, grip.z);
-    const E = S.clone().lerp(G, 0.5).add(V3(s * 0.08, -0.07, -0.03));
-    const aj = new Parts(), af = new Parts();
-    aj.add(capsule(S, E, 0.06), jacketMark);
-    aj.add(capsule(E, G, 0.05), jacketMark);
-    af.add(sphere(0.05, G.x, G.y, G.z, 1, 1, 1, 6), '#111');
-    const gj = aj.build(), gf = af.build();
-    gj.translate(-S.x, -S.y, -S.z); gf.translate(-S.x, -S.y, -S.z);
-    arms.push({ j: gj, f: gf, S: S.clone().sub(hip), dir: G.clone().sub(S).normalize(), side: s });
-  }
-  const hc = neck.clone().addScaledVector(dir, 0.13).add(V3(0, 0.02, 0.02));
-  helmet.add(sphere(0.155, hc.x, hc.y, hc.z, 1, 1.02, 1.12, 12));
-  upFix.add(slab([[hc.z + 0.1, hc.y - 0.02], [hc.z + 0.17, hc.y], [hc.z + 0.16, hc.y + 0.06], [hc.z + 0.08, hc.y + 0.07]], 0.26, 1, 0.01), '#0d1117');
-  // shift so the upper body pivots around the hip
-  const ug = upper.build(), hg = helmet.build(), fg = upFix.build();
-  for (const g of [ug, hg, fg]) g.translate(-hip.x, -hip.y, -hip.z);
-  return { lower: lower.build(), upper: ug, upFix: fg, helmet: hg, hip, arms, grip: V3(0, grip.y, grip.z) };
-}
-
 // ---------------------------------------------------------------------------
 const modelCache = new Map();
 export function getModel(spec) {
@@ -504,7 +449,8 @@ export function getModel(spec) {
   const head = o.head.clone();
   const axis = new THREE.Vector3().subVectors(o.head, o.axleF).normalize();
   const steerGeo = (p) => { const g = p.build(); if (g) g.translate(-head.x, -head.y, -head.z); return g; };
-  const rider = buildRider(o);
+  const rider = { hip: o.seat.clone(), grip: V3(0, o.grip.y, o.grip.z) };
+  const ergo = { seat: o.seat.clone(), peg: o.peg.clone(), grip: { ...o.grip } };
   const m = {
     L: o.L, r: o.r, rf: o.rf, head, axis,
     axleF: o.axleF.clone(), axleR: o.axleR.clone(),
@@ -512,7 +458,7 @@ export function getModel(spec) {
     sBase: steerGeo(o.sb), sPaint: steerGeo(o.sp), sLight: steerGeo(o.sl), sMet: steerGeo(o.sm),
     wheelR: buildWheel(o.r, spec.type === 'trail' ? 0.12 : spec.type === 'scooter' || spec.type === 'escooter' ? 0.11 : 0.1, o.wheel, true),
     wheelF: buildWheel(o.rf, spec.type === 'trail' ? 0.09 : spec.type === 'scooter' || spec.type === 'escooter' ? 0.1 : 0.09, o.wheel, !o.drum),
-    rider,
+    rider, ergo,
   };
   // angle at which the tail/plate first touches the ground in a wheelie
   let sc = 1.6;
@@ -577,31 +523,10 @@ export class BikeVisual {
     mk(m.wheelR.tire, MAT.base, this.wr);
     mk(m.wheelR.rim, this.rimMat, this.wr);
     mk(m.wheelR.metal, MAT.metal, this.wr);
-    // rider rig: riderRoot (crash) > riderG (trick pivot at the grips) > body
+    // articulated rider (riderRoot is used for the crash tumble)
     this.riderRoot = new THREE.Group();
     this.inner.add(this.riderRoot);
-    this.riderG = new THREE.Group();
-    this.riderG.position.copy(m.rider.grip);
-    this.riderRoot.add(this.riderG);
-    const body = new THREE.Group();
-    body.position.copy(m.rider.grip).negate();
-    this.riderG.add(body);
-    mk(m.rider.lower, MAT.base, body);
-    this.upper = new THREE.Group();
-    this.upper.position.copy(m.rider.hip);
-    body.add(this.upper);
-    mk(m.rider.upper, this.jacketMat, this.upper);
-    mk(m.rider.upFix, MAT.base, this.upper);
-    mk(m.rider.helmet, this.helmetMat, this.upper);
-    this.arms = m.rider.arms.map((a) => {
-      const g = new THREE.Group();
-      g.position.copy(a.S);
-      this.upper.add(g);
-      mk(a.j, this.jacketMat, g);
-      mk(a.f, MAT.base, g);
-      return { g, a, qUp: new THREE.Quaternion().setFromUnitVectors(a.dir, new THREE.Vector3(a.side * 0.45, 0.88, 0.15).normalize()),
-        qOut: new THREE.Quaternion().setFromUnitVectors(a.dir, new THREE.Vector3(a.side * 0.95, 0.25, 0.1).normalize()) };
-    });
+    this.rig = new RiderRig(this.riderRoot, { jacket: this.jacketMat, base: MAT.base, helmet: this.helmetMat, metal: MAT.metal }, m.ergo, mk);
     this.pose = 0;
     this.wheelRot = 0;
     this.riderOff = false;
@@ -626,30 +551,11 @@ export class BikeVisual {
     this.steer.quaternion.copy(tmpQ);
     this.wr.rotation.x = s.wheel / this.m.r;
     this.wf.rotation.x = s.wheel / this.m.rf;
-    // rider body language + tricks
+    // rider: full-body pose with IK (tricks blend in)
     const t = s.trick || 0, b = s.tb || 0;
     if (t) this.pose = t;
-    const pb = this.pose ? b : 0;
     if (!b) this.pose = 0;
-    let ux = p > 0 ? Math.min(0.45, p * 0.4) : p * 0.3;
-    this.riderG.rotation.set(0, 0, 0);
-    this.riderG.position.copy(this.m.rider.grip);
-    for (const A of this.arms) A.g.quaternion.identity();
-    if (this.pose === 1) { // no hands
-      ux = ux * (1 - pb) + (0.15 + Math.min(0.5, p * 0.45)) * pb;
-      for (const A of this.arms) A.g.quaternion.slerp(A.qUp, pb);
-    } else if (this.pose === 2) { // superman
-      this.riderG.rotation.x = (0.95 + 0.85 * Math.max(0, p)) * pb; // body flat in the air behind the bike
-      this.riderG.position.y += 0.08 * pb;
-      ux *= 1 - pb;
-    } else if (this.pose === 3) { // standing on the seat
-      this.riderG.rotation.x = (0.25 + 0.9 * Math.max(0, p)) * pb; // stand up on the seat, upright in the world
-      this.riderG.position.y += 0.38 * pb;
-      ux = ux * (1 - pb) + 0.1 * pb;
-      for (const A of this.arms) A.g.quaternion.slerp(A.qOut, pb);
-    }
-    this.upper.rotation.x = ux;
-    this.upper.rotation.z = s.lean * 0.25;
+    this.rig.update(p, this.pose, this.pose ? b : 0, s.lean);
   }
   dispose() {
     this.paintMat.dispose(); this.rimMat.dispose(); this.helmetMat.dispose(); this.jacketMat.dispose();
